@@ -75,3 +75,35 @@ Customization
 
 - Add RDMA/IB module setup and kernel tuning as part of your cluster bootstrap.
 - If you use Istio, implement `scripts/canary_route.sh` to adjust VirtualService weights.
+
+6. Capacity
+
+## Capacity estimator
+
+This repository includes a small utility to estimate GPU and container RAM requirements for causal LMs:
+
+`scripts/capacity_estimator.py`
+
+Example usage (estimates VRAM per GPU and suggested tensor-parallel count):
+
+```bash
+python3 scripts/capacity_estimator.py \
+	--params 40000000000 \
+	--dtype bf16 \
+	--kv-bits 16 \
+	--batch 8 \
+	--ctx 8192 \
+	--gen 512 \
+	--gpu-mem 80 \
+	--max-gpus 8
+```
+
+Flags of interest:
+- `--params` : total number of model parameters (required if no HF config supplied)
+- `--dtype` : weight datatype (bf16, fp16, int8, int4, fp8)
+- `--kv-bits` : KV-cache precision in bits (16/8/4)
+- `--batch`/`--ctx`/`--gen` : concurrent batch size, prompt length and generation length
+- `--gpu-mem`/`--max-gpus` : per-GPU VRAM (GiB) and maximum GPUs to try for tensor-parallel
+- `--empirical` : run an empirical probe (requires `vllm`, `torch` and `pynvml`) to measure throughput and peak VRAM
+
+See `scripts/capacity_estimator.py` for more details and additional flags.
