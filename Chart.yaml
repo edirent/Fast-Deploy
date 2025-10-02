@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ds-v3
+description: "Helm chart for DeepSeek v3 inference service (vLLM/TensorRT/DeepSpeed)"
+type: application
+version: 0.1.0
+appVersion: "0.3.1"

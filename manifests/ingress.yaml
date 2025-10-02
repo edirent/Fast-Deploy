@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ds-v3-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+    - host: ds-v3.api.corp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ds-v3
+                port:
+                  number: 8000
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ds-v3-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+    - host: ds-v3.api.corp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ds-v3-{{ .Release.Name | default "release" }}
+                port:
+                  number: 8000

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ds-v3.fullname" . }}
+  labels:
+    app: {{ include "ds-v3.name" . }}
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: {{ include "ds-v3.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "ds-v3.name" . }}
+    spec:
+      runtimeClassName: nvidia
+      nodeSelector: {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations: {{- toYaml .Values.tolerations | nindent 6 }}
+      containers:
+        - name: server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          args:
+            - "--model={{ .Values.model.name }}"
+            - "--tp={{ .Values.model.tensor_parallel_size }}"
+            - "--pp={{ .Values.model.pipeline_parallel_size }}"
+            - "--max-model-len={{ .Values.model.max_model_len }}"
+            - "--max-batch-tokens={{ .Values.model.max_batch_tokens }}"
+            - "--dtype={{ .Values.model.dtype }}"
+            - "--enable-streaming"
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          env: {{- toYaml .Values.env | nindent 12 }}
+          volumeMounts:
+            - name: weights
+              mountPath: /weights
+      initContainers:
+        - name: weight-warmup
+          image: registry.local/tools/s5cmd:latest
+          command: ["sh","-c"]
+          args:
+            - >-
+              s5cmd --endpoint-url=$S3_ENDPOINT cp -r {{ .Values.model.s3_weights.uri }} /weights || exit 1
+          envFrom:
+            - secretRef:
+                name: s3-cred
+          volumeMounts:
+            - name: weights
+              mountPath: /weights
+      volumes:
+        - name: weights
+          emptyDir: { medium: "" }

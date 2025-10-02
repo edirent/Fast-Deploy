@@ -1,0 +1,69 @@
+image:
+  repository: registry.local/ds-v3
+  tag: "0.3.1-vllm-cu12"
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+model:
+  name: "deepseek-v3"
+  backend: "vllm"   # vllm | tensorrtllm | deepspeed
+  tensor_parallel_size: 4
+  pipeline_parallel_size: 1
+  max_batch_tokens: 8192
+  max_model_len: 32768
+  dtype: "bf16"
+  s3_weights:
+    enabled: true
+    uri: "s3://llm-weights/deepseek-v3/"
+    cache_dir: "/weights"
+
+resources:
+  limits:
+    nvidia.com/gpu: 4
+    cpu: "8"
+    memory: "64Gi"
+  requests:
+    nvidia.com/gpu: 4
+    cpu: "4"
+    memory: "48Gi"
+
+env:
+  - name: NCCL_P2P_DISABLE
+    value: "0"
+  - name: NCCL_IB_HCA
+    value: "mlx5_0"
+  - name: NCCL_SOCKET_IFNAME
+    value: "eth0"
+  - name: CUDA_DEVICE_MAX_CONNECTIONS
+    value: "1"
+
+nodeSelector:
+  gpu: "true"
+
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+affinity:
+  podAntiAffinity: "soft"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 6
+  targetGPUUtilization: 70
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: ds-v3.api.corp.local
+      paths:
+        - path: /
+          pathType: Prefix
